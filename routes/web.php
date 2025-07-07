@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\CreateContactController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ContactController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('contacts.index');
 });
 
-Route::post('/contacts', CreateContactController::class);
+Route::resource('contacts', ContactController::class);

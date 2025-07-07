@@ -6,12 +6,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Inertia\Testing\AssertableInertia;
+use App\Models\Contact;
 
 class CreateContactsTest extends TestCase
 {
     #[Test]
     public function it_should_be_able_to_create_a_new_contact(): void
     {
+
+        \App\Models\Contact::truncate();
+        
         $data = [
             'name' => 'Rodolfo Meri',
             'email' => 'rodolfomeri@contato.com',
@@ -20,7 +25,7 @@ class CreateContactsTest extends TestCase
 
         $response = $this->post('/contacts', $data);
 
-        $response->assertStatus(200);
+        $response->assertStatus(302);
 
 
         $expected = $data;
@@ -50,22 +55,19 @@ class CreateContactsTest extends TestCase
     }
 
     #[Test]
-    public function it_should_be_able_to_list_contacts_paginated_by_10_items_per_page(): void
-    {
-        \App\Models\Contact::factory(20)->create();
+    public function test_it_should_be_able_to_list_contacts_paginated_by_10_items_per_page(): void
+{
+    Contact::factory(20)->create();
 
-        $response = $this->get('/contacts');
+    $response = $this->get('/contacts');
 
-        $response->assertStatus(200);
+    $response->assertStatus(200);
 
-        $response->assertViewIs('contacts.index');
-
-        $response->assertViewHas('contacts');
-
-        $contacts = $response->viewData('contacts');
-
-        $this->assertCount(10, $contacts);
-    }
+    $response->assertInertia(fn (AssertableInertia $page) =>
+        $page->component('Contacts/Index')
+             ->has('contacts.data', 10)
+    );
+}
 
     #[Test]
     public function it_should_be_able_to_delete_a_contact(): void
@@ -74,30 +76,32 @@ class CreateContactsTest extends TestCase
 
         $response = $this->delete("/contacts/{$contact->id}");
 
-        $response->assertStatus(200);
+        $response->assertStatus(302);
 
         $this->assertDatabaseMissing('contacts', $contact->toArray());
     }
 
     #[Test]
     public function the_contact_email_should_be_unique(): void
-    {
-        $contact = \App\Models\Contact::factory()->create();
+{
+    \App\Models\Contact::truncate();
 
-        $data = [
-            'name' => 'Rodolfo Meri',
-            'email' => $contact->email,
-            'phone' => '(41) 98899-4422'
-        ];
+    $contact = \App\Models\Contact::factory()->create();
 
-        $response = $this->post('/contacts', $data);
+    $data = [
+        'name' => 'Rodolfo Meri',
+        'email' => $contact->email,
+        'phone' => '(41) 98899-4422'
+    ];
 
-        $response->assertSessionHasErrors([
-            'email'
-        ]);
+    $response = $this->post('/contacts', $data);
 
-        $this->assertDatabaseCount('contacts', 1);
-    }
+    $response->assertSessionHasErrors([
+        'email'
+    ]);
+
+    $this->assertDatabaseCount('contacts', 1);
+}
 
     #[Test]
     public function it_should_be_able_to_update_a_contact(): void
@@ -112,7 +116,7 @@ class CreateContactsTest extends TestCase
 
         $response = $this->put("/contacts/{$contact->id}", $data);
 
-        $response->assertStatus(200);
+        $response->assertStatus(302);
 
         $expected = $data;
 
