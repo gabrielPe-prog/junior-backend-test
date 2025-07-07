@@ -34,6 +34,8 @@ class CreateContactsTest extends TestCase
         $this->assertDatabaseHas('contacts', $expected);
     }
 
+    use RefreshDatabase;
+
     #[Test]
     public function it_should_validate_information(): void
     {

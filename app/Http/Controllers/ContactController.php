@@ -25,15 +25,30 @@ class ContactController extends Controller
 
     public function store(StoreContactRequest $request)
 {
-    // dd($request->all(), $request->validated());
-
     $validated = $request->validated();
-    
     $validated['phone'] = preg_replace('/\D/', '', $validated['phone']);
+
+    $existingContact = Contact::where('email', $validated['email'])->first();
+
+    if ($existingContact) {
+        return response()->json([
+            'errors' => [
+                'email' => 'duplicate_email',
+                'existingContact' => [
+                    'name' => $existingContact->name,
+                    'phone' => $existingContact->phone,
+                    'email' => $existingContact->email
+                ]
+            ]
+        ], 422);
+    }
 
     Contact::create($validated);
 
-    return redirect()->route('contacts.index')->with('message', 'Contact created successfully!');
+    return redirect()->route('contacts.index')->with([
+        'message' => 'Contact created successfully!',
+        'type' => 'success'
+    ]);
 }
 
     public function edit(Contact $contact)
@@ -55,13 +70,19 @@ class ContactController extends Controller
 
         $contact->update($validated);
 
-        return redirect()->route('contacts.index')->with('message', 'Contact updated successfully!');
+        return redirect()->route('contacts.index')->with([
+            'message' => 'Contact updated successfully!',
+            'type' => 'success'
+        ]);
     }
 
     public function destroy(Contact $contact)
     {
         $contact->delete();
 
-        return redirect()->route('contacts.index')->with('message', 'Contact deleted successfully!');
+        return redirect()->route('contacts.index')->with([
+            'message' => 'Contact deleted successfully!',
+            'type' => 'success'
+        ]);
     }
 }

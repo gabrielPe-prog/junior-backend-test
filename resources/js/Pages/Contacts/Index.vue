@@ -3,15 +3,43 @@
         <div class="max-w-6xl mx-auto">
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Contact List</h1>
-                <Link href="/contacts/create"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
-                        clip-rule="evenodd" />
-                </svg>
-                New Contact
-                </Link>
+                <div class="flex space-x-4">
+                    <button @click="exportToCSV"
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Export CSV
+                    </button>
+                    <Link href="/contacts/create"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    New Contact
+                    </Link>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input v-model="searchTerm" type="text"
+                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Search contacts...">
+                </div>
             </div>
 
             <div class="bg-white shadow-md rounded-lg overflow-hidden">
@@ -34,7 +62,7 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="contact in contacts.data" :key="contact.id" class="hover:bg-gray-50">
+                            <tr v-for="contact in filteredContacts" :key="contact.id" class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div
@@ -71,7 +99,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="contacts.data.length === 0">
+                            <tr v-if="filteredContacts.length === 0">
                                 <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No contacts found.
                                 </td>
                             </tr>
@@ -102,9 +130,12 @@
 
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import Swal from 'sweetalert2';
 
-defineProps({
+const searchTerm = ref('');
+
+const props = defineProps({
     contacts: {
         type: Object,
         default: () => ({
@@ -116,6 +147,19 @@ defineProps({
             next_page_url: null
         })
     }
+});
+
+const filteredContacts = computed(() => {
+    if (!searchTerm.value) {
+        return props.contacts.data;
+    }
+
+    const term = searchTerm.value.toLowerCase();
+    return props.contacts.data.filter(contact =>
+        contact.name.toLowerCase().includes(term) ||
+        contact.email.toLowerCase().includes(term) ||
+        contact.phone.toLowerCase().includes(term)
+    )
 });
 
 const deleteContact = (id) => {
@@ -139,10 +183,58 @@ const deleteContact = (id) => {
         }
     });
 };
+
+const exportToCSV = () => {
+    if (filteredContacts.value.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'No contacts to export',
+            text: 'There are no contacts to export.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        return;
+    }
+
+    const headers = ['Name', 'Email', 'Phone'];
+
+    const data = filteredContacts.value.map(contact => [
+        `"${contact.name.replace(/"/g, '""')}"`,
+        `"${contact.email.replace(/"/g, '""')}"`,
+        `"${contact.phone.replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `contacts_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Export successful!',
+        text: `Exported ${filteredContacts.value.length} contacts to CSV file.`,
+        timer: 2000,
+        showConfirmButton: false
+    });
+};
 </script>
 
 <style scoped>
 tr {
     transition: background-color 0.2s ease;
+}
+
+.csv-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 </style>
